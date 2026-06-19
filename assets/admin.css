@@ -1,0 +1,19 @@
+/* admin.css */
+.utp-wrap { max-width: 1200px; }
+.utp-tab-content { padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-top: none; }
+.utp-nav-tab-wrapper { margin-bottom: 0; }
+.utp-estimator-box { background: #e5f5fa; border-left: 4px solid #00a0d2; padding: 15px; margin-bottom: 20px; }
+.utp-estimator-box p { margin: 5px 0; font-size: 14px; }
+.utp-estimator-box h3 { margin-top: 0; }
+
+/* Modal Styles */
+.utp-modal { position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+.utp-modal-content { background-color: #fefefe; margin: 3% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 1200px; max-height: 90vh; overflow-y: auto; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+.utp-close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1; }
+.utp-close-modal:hover { color: #000; }
+.utp-original-box { background: #f0f0f1; padding: 10px; border: 1px solid #ddd; max-height: 300px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; word-break: break-word;}
+.utp-editor-split { display: flex; gap: 20px; margin-top: 15px;}
+.utp-editor-left, .utp-editor-right { flex: 1; display: flex; flex-direction: column;}
+.utp-meta-input { font-family: monospace; width: 100%; }
+textarea.utp-meta-input { flex-grow: 1; min-height: 100px; }
+hr { border-top: 1px solid #eee; margin-top: 20px; }
