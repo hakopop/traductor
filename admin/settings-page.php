@@ -5,6 +5,7 @@
     <h2 class="nav-tab-wrapper utp-nav-tab-wrapper">
         <a href="#utp-tab-settings" class="nav-tab nav-tab-active">Configuración API</a>
         <a href="#utp-tab-database" class="nav-tab">Base de Datos (Posts/Páginas/Meta)</a>
+        <a href="#utp-tab-urls" class="nav-tab">Enlaces SEO y Redirecciones</a>
         <a href="#utp-tab-strings" class="nav-tab">Cadenas (Temas/Plugins)</a>
     </h2>
 
@@ -121,6 +122,43 @@
         <p style="text-align:center; margin-top:15px;">
             <button class="button" id="utp-load-more-btn" style="display:none;">Cargar más posts</button>
             <span id="utp-pagination-info" class="description"></span>
+        </p>
+    </div>
+
+    <!-- Tab 4: URLs SEO -->
+    <div id="utp-tab-urls" class="utp-tab-content" style="display:none;">
+        <h2>Gestor de Enlaces SEO y Redirecciones 301</h2>
+        <p class="description">Traduce de forma segura las URLs de tus páginas. El sistema guardará el enlace anterior y redirigirá el tráfico automáticamente (Anti-404).</p>
+        
+        <div class="utp-estimator-box" style="margin-bottom: 15px;">
+            <p style="margin-bottom: 10px;">
+                <label for="utp-target-lang-urls"><strong>Generar Slugs en:</strong></label>
+                <select id="utp-target-lang-urls">
+                    <option value="EN">Inglés</option>
+                    <option value="PT">Portugués</option>
+                    <option value="ES">Español</option>
+                    <option value="FR">Francés</option>
+                </select>
+            </p>
+            <button class="button button-primary" id="utp-auto-translate-urls-btn" disabled>Traducir URLs Seleccionadas</button>
+        </div>
+
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <td id="cb" class="manage-column column-cb check-column"><input type="checkbox" id="cb-select-all-urls"></td>
+                    <th>ID / Título</th>
+                    <th>URL Actual (Slug)</th>
+                    <th>Historial de URLs Antiguas (Se redirigen 301)</th>
+                    <th>Enlace Real</th>
+                </tr>
+            </thead>
+            <tbody id="utp-urls-list">
+                <tr><td colspan="5">Cargando URLs...</td></tr>
+            </tbody>
+        </table>
+        <p style="text-align:center; margin-top:15px;">
+            <button class="button" id="utp-load-more-urls-btn" style="display:none;">Cargar más URLs</button>
         </p>
     </div>
 

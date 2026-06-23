@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: Universal Translator Pro
+ * Plugin Name: Universal Translator 
  * Description: Traductor masivo y permanente para WordPress con editor manual y estimador de costos de API.
  * Version: 1.1.0
- * Author: Antigravity
+ * Author: kiza
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,6 +18,10 @@ define( 'UTP_VERSION', '1.1.0' );
 require_once UTP_PLUGIN_DIR . 'includes/class-cost-estimator.php';
 require_once UTP_PLUGIN_DIR . 'includes/class-api-client.php';
 require_once UTP_PLUGIN_DIR . 'includes/class-db-translator.php';
+require_once UTP_PLUGIN_DIR . 'includes/class-url-manager.php';
+
+// Inicializar Módulo de URLs
+UTP_URL_Manager::init();
 
 // Admin Menu
 add_action( 'admin_menu', 'utp_register_admin_menu' );

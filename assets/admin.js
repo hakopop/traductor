@@ -45,6 +45,9 @@ jQuery(document).ready(function($) {
         if ($(this).attr('href') === '#utp-tab-database' && !postsLoaded) {
             loadPosts(1);
         }
+        if ($(this).attr('href') === '#utp-tab-urls' && !window.urlsLoaded) {
+            loadUrls(1);
+        }
     });
 
     function updateLangCounts() {
@@ -545,5 +548,113 @@ jQuery(document).ready(function($) {
             }
         };
         reader.readAsText(file);
+    });
+
+    // --- URL MANAGER LOGIC ---
+    window.utpUrlsData = [];
+    window.urlsLoaded = false;
+    let urlCurrentPage = 0;
+    let urlTotalPages = 1;
+
+    function renderUrlRow(item) {
+        return `<tr>
+            <th scope="row" class="check-column"><input type="checkbox" name="url_ids[]" value="${item.id}" class="utp-url-cb"></th>
+            <td><strong>${item.id}</strong> - ${item.title}</td>
+            <td id="slug-cell-${item.id}"><code>${item.slug}</code></td>
+            <td id="old-slugs-cell-${item.id}" style="color:#888;">${item.old_slugs || '-'}</td>
+            <td><a href="${item.permalink}" target="_blank">Ver ↗</a></td>
+        </tr>`;
+    }
+
+    function loadUrls(page) {
+        let btn = $('#utp-load-more-urls-btn');
+        btn.prop('disabled', true).text('Cargando...');
+
+        $.post(utpData.ajaxurl, {
+            action: 'utp_get_urls',
+            nonce: utpData.nonce,
+            paged: page
+        }, function(response) {
+            btn.prop('disabled', false).text('Cargar más URLs');
+            if (!response.success) return;
+
+            urlCurrentPage = response.data.paged;
+            urlTotalPages = response.data.total_pages;
+            window.utpUrlsData = window.utpUrlsData.concat(response.data.posts);
+
+            let html = response.data.posts.map(renderUrlRow).join('');
+            if (page > 1) {
+                $('#utp-urls-list').append(html);
+            } else {
+                $('#utp-urls-list').html(html);
+            }
+
+            window.urlsLoaded = true;
+            btn.toggle(urlCurrentPage < urlTotalPages);
+        });
+    }
+
+    $('#utp-load-more-urls-btn').click(function() {
+        loadUrls(urlCurrentPage + 1);
+    });
+
+    $(document).on('change', '.utp-url-cb, #cb-select-all-urls', function() {
+        if ($(this).attr('id') === 'cb-select-all-urls') {
+            $('.utp-url-cb').prop('checked', $(this).prop('checked'));
+        }
+        $('#utp-auto-translate-urls-btn').prop('disabled', $('.utp-url-cb:checked').length === 0);
+    });
+
+    $('#utp-auto-translate-urls-btn').click(function() {
+        let selectedIds = [];
+        $('.utp-url-cb:checked').each(function() {
+            selectedIds.push($(this).val());
+        });
+
+        if (selectedIds.length === 0) return;
+
+        let targetLang = $('#utp-target-lang-urls').val();
+        if (!confirm(`¿Estás seguro de traducir ${selectedIds.length} enlaces al idioma ${targetLang}? Esto consumirá tokens de la API. Las URLs anteriores se guardarán para redirección 301.`)) return;
+
+        let btn = $(this);
+        btn.prop('disabled', true).text('Traduciendo Enlaces...');
+
+        let completed = 0;
+        let errors = 0;
+
+        function processNextUrl() {
+            if (completed + errors >= selectedIds.length) {
+                btn.prop('disabled', false).text('Traducir URLs Seleccionadas');
+                alert(`Lote completado. Éxitos: ${completed}, Errores: ${errors}.`);
+                return;
+            }
+
+            let id = selectedIds[completed + errors];
+
+            $.post(utpData.ajaxurl, {
+                action: 'utp_translate_urls',
+                nonce: utpData.nonce,
+                post_id: id,
+                target_lang: targetLang
+            }, function(response) {
+                if (response.success) {
+                    completed++;
+                    $('#slug-cell-' + id).html(`<code>${response.data.slug}</code>`);
+                    if (response.data.old_slugs) {
+                        $('#old-slugs-cell-' + id).html(response.data.old_slugs);
+                    }
+                } else {
+                    errors++;
+                    console.error('Error traduciendo URL ' + id, response.data);
+                }
+                btn.text(`Traduciendo... (${completed + errors}/${selectedIds.length})`);
+                processNextUrl();
+            }).fail(function() {
+                errors++;
+                processNextUrl();
+            });
+        }
+
+        processNextUrl();
     });
 });
