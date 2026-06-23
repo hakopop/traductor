@@ -30,6 +30,34 @@ add_action( 'wp_ajax_utp_save_manual_translation', array( 'UTP_DB_Translator', '
 add_action( 'wp_ajax_utp_restore_backup', array( 'UTP_DB_Translator', 'ajax_restore_backup' ) );
 add_action( 'wp_ajax_utp_export_translations', array( 'UTP_DB_Translator', 'ajax_export_translations' ) );
 add_action( 'wp_ajax_utp_import_translations', array( 'UTP_DB_Translator', 'ajax_import_translations' ) );
+add_action( 'wp_ajax_utp_save_rates', 'utp_ajax_save_rates' );
+
+function utp_ajax_save_rates() {
+    check_ajax_referer( 'utp_ajax_nonce', 'nonce' );
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( 'Permisos insuficientes.', 403 );
+    }
+
+    $allowed_keys = array( 'deepl', 'openai', 'google', 'gemini' );
+    $new_rates = array();
+    $raw = isset( $_POST['rates'] ) && is_array( $_POST['rates'] ) ? $_POST['rates'] : array();
+
+    foreach ( $allowed_keys as $key ) {
+        if ( isset( $raw[ $key ] ) ) {
+            $val = floatval( $raw[ $key ] );
+            if ( $val > 0 ) {
+                $new_rates[ $key ] = $val;
+            }
+        }
+    }
+
+    if ( empty( $new_rates ) ) {
+        wp_send_json_error( 'No se recibieron tarifas válidas.' );
+    }
+
+    update_option( 'utp_custom_rates', $new_rates );
+    wp_send_json_success( 'Tarifas actualizadas correctamente.' );
+}
 
 function utp_register_admin_menu() {
     add_menu_page(
@@ -84,9 +112,10 @@ function utp_admin_scripts( $hook ) {
     // Variables for JS. Se incluyen las tarifas para que el estimador de costos
     // sea instantáneo en el navegador (sin viajes AJAX extra).
     wp_localize_script( 'utp-admin-js', 'utpData', array(
-        'ajaxurl' => admin_url( 'admin-ajax.php' ),
-        'nonce'   => wp_create_nonce( 'utp_ajax_nonce' ),
-        'apiType' => get_option( 'utp_api_type', 'deepl' ),
-        'rates'   => UTP_Cost_Estimator::get_rates(),
+        'ajaxurl'      => admin_url( 'admin-ajax.php' ),
+        'nonce'        => wp_create_nonce( 'utp_ajax_nonce' ),
+        'apiType'      => get_option( 'utp_api_type', 'deepl' ),
+        'rates'        => UTP_Cost_Estimator::get_rates(),
+        'defaultRates' => UTP_Cost_Estimator::get_default_rates(),
     ) );
 }

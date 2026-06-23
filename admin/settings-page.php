@@ -46,6 +46,58 @@
             <button type="button" id="utp-test-api-btn" class="button" style="margin-left: 10px;">Probar Conexión API</button>
             <span id="utp-test-api-result" style="margin-left: 10px; font-weight: bold;"></span>
         </form>
+
+        <hr style="margin: 25px 0;" />
+
+        <h2>Tarifas por Carácter (Estimador de Costos)</h2>
+        <p class="description">Estas tarifas se usan únicamente para el estimador de costos interno. No afectan el consumo real de la API.</p>
+        <?php
+            $rates = UTP_Cost_Estimator::get_rates();
+            $default_rates = UTP_Cost_Estimator::get_default_rates();
+            $providers = array(
+                'deepl'  => 'DeepL',
+                'openai' => 'OpenAI (ChatGPT)',
+                'google' => 'Google Translate',
+                'gemini' => 'Gemini (Google AI Studio)',
+            );
+        ?>
+        <table class="form-table" id="utp-rates-table">
+            <thead>
+                <tr>
+                    <th>Proveedor</th>
+                    <th>Tarifa por carácter (USD)</th>
+                    <th>Valor por defecto</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ( $providers as $key => $label ) : ?>
+                <tr>
+                    <th scope="row"><?php echo esc_html( $label ); ?></th>
+                    <td>
+                        <input
+                            type="number"
+                            id="utp-rate-<?php echo esc_attr( $key ); ?>"
+                            class="utp-rate-input regular-text"
+                            data-key="<?php echo esc_attr( $key ); ?>"
+                            data-default="<?php echo esc_attr( $default_rates[ $key ] ); ?>"
+                            value="<?php echo esc_attr( $rates[ $key ] ); ?>"
+                            step="0.0000001"
+                            min="0"
+                            style="width: 180px;"
+                        />
+                    </td>
+                    <td style="color:#888; font-size:13px;">
+                        <?php echo esc_html( $default_rates[ $key ] ); ?>
+                        <button type="button" class="button button-small utp-reset-rate-btn" data-key="<?php echo esc_attr( $key ); ?>" style="margin-left:8px;">Restablecer</button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <p>
+            <button type="button" id="utp-save-rates-btn" class="button button-primary">Actualizar Tarifas</button>
+            <span id="utp-rates-result" style="margin-left: 10px; font-weight: bold;"></span>
+        </p>
     </div>
 
     <!-- Tab 2: Database -->

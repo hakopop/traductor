@@ -95,16 +95,22 @@ class UTP_URL_Manager {
         $post = get_post( $post_id );
         if ( ! $post ) wp_send_json_error( 'Post no encontrado' );
 
-        require_once UTP_PLUGIN_DIR . 'includes/class-api-client.php';
-        
-        $translated_title = UTP_API_Client::translate( $post->post_title, $target_lang );
-        
-        if ( is_wp_error( $translated_title ) ) {
-            wp_send_json_error( $translated_title->get_error_message() );
+        // Paso 1: extraer texto legible del slug actual
+        // "nombre-del-tour" -> "Nombre del tour"
+        $current_slug = $post->post_name;
+        $readable_text = ucwords( str_replace( array( '-', '_' ), ' ', $current_slug ) );
+
+        // Paso 2: traducir el texto legible
+        $translated_text = UTP_API_Client::translate( $readable_text, $target_lang );
+
+        if ( is_wp_error( $translated_text ) ) {
+            wp_send_json_error( $translated_text->get_error_message() );
         }
 
-        $new_slug = sanitize_title( $translated_title );
-        $old_slug = $post->post_name;
+        // Paso 3: convertir el texto traducido de vuelta a slug limpio
+        // "Nome do passeio" -> "nome-do-passeio"
+        $new_slug = sanitize_title( $translated_text );
+        $old_slug = $current_slug;
 
         if ( $new_slug === $old_slug ) {
             wp_send_json_success( array( 'slug' => $new_slug, 'msg' => 'El slug es el mismo.' ) );
@@ -120,7 +126,7 @@ class UTP_URL_Manager {
         }
 
         wp_update_post( array(
-            'ID' => $post_id,
+            'ID'        => $post_id,
             'post_name' => $new_slug
         ) );
 

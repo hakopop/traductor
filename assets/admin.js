@@ -657,4 +657,53 @@ jQuery(document).ready(function($) {
 
         processNextUrl();
     });
+
+    // --- RATES EDITOR ---
+    // Botón "Restablecer" individual: carga el valor por defecto del data-default
+    $(document).on('click', '.utp-reset-rate-btn', function() {
+        let key = $(this).data('key');
+        let defaultVal = $(this).closest('tr').find('.utp-rate-input').data('default');
+        $('#utp-rate-' + key).val(defaultVal);
+    });
+
+    // Botón "Actualizar Tarifas": recopila los inputs y los envía vía AJAX
+    $('#utp-save-rates-btn').click(function() {
+        let btn = $(this);
+        let result = $('#utp-rates-result');
+        let rates = {};
+
+        $('.utp-rate-input').each(function() {
+            let key = $(this).data('key');
+            let val = parseFloat($(this).val());
+            if (key && !isNaN(val) && val > 0) {
+                rates[key] = val;
+            }
+        });
+
+        if (Object.keys(rates).length === 0) {
+            result.css('color', '#d63638').text('❌ No hay tarifas válidas.');
+            return;
+        }
+
+        btn.prop('disabled', true).text('Guardando...');
+        result.css('color', '#555').text('');
+
+        $.post(utpData.ajaxurl, {
+            action: 'utp_save_rates',
+            nonce: utpData.nonce,
+            rates: rates
+        }, function(response) {
+            btn.prop('disabled', false).text('Actualizar Tarifas');
+            if (response.success) {
+                // Actualizar utpData.rates en memoria para que el estimador use los nuevos valores
+                utpData.rates = Object.assign(utpData.rates || {}, rates);
+                result.css('color', 'green').text('✅ ' + response.data);
+            } else {
+                result.css('color', '#d63638').text('❌ ' + response.data);
+            }
+        }).fail(function() {
+            btn.prop('disabled', false).text('Actualizar Tarifas');
+            result.css('color', '#d63638').text('❌ Error de red.');
+        });
+    });
 });
