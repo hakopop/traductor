@@ -8,6 +8,7 @@ class UTP_URL_Manager {
         
         add_action( 'wp_ajax_utp_get_urls', array( __CLASS__, 'ajax_get_urls' ) );
         add_action( 'wp_ajax_utp_translate_urls', array( __CLASS__, 'ajax_translate_urls' ) );
+        add_action( 'wp_ajax_utp_save_manual_url', array( __CLASS__, 'ajax_save_manual_url' ) );
     }
 
     public static function intercept_404_and_redirect() {
@@ -108,6 +109,41 @@ class UTP_URL_Manager {
 
         if ( $new_slug === $old_slug ) {
             wp_send_json_success( array( 'slug' => $new_slug, 'msg' => 'El slug es el mismo.' ) );
+        }
+
+        $old_slugs = get_post_meta( $post_id, '_utp_old_slugs', true );
+        if ( ! is_array( $old_slugs ) ) {
+            $old_slugs = array();
+        }
+        if ( ! in_array( $old_slug, $old_slugs ) ) {
+            $old_slugs[] = $old_slug;
+            update_post_meta( $post_id, '_utp_old_slugs', $old_slugs );
+        }
+
+        wp_update_post( array(
+            'ID' => $post_id,
+            'post_name' => $new_slug
+        ) );
+
+        wp_send_json_success( array( 'slug' => $new_slug, 'old_slugs' => implode(', ', $old_slugs) ) );
+    }
+
+    public static function ajax_save_manual_url() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error();
+
+        $post_id = isset( $_POST['post_id'] ) ? intval( $_POST['post_id'] ) : 0;
+        $new_slug_raw = isset( $_POST['new_slug'] ) ? sanitize_text_field( $_POST['new_slug'] ) : '';
+
+        if ( ! $post_id || empty( $new_slug_raw ) ) wp_send_json_error( 'Datos inválidos' );
+
+        $post = get_post( $post_id );
+        if ( ! $post ) wp_send_json_error( 'Post no encontrado' );
+
+        $new_slug = sanitize_title( $new_slug_raw );
+        $old_slug = $post->post_name;
+
+        if ( $new_slug === $old_slug ) {
+            wp_send_json_success( array( 'slug' => $new_slug, 'msg' => 'El slug no cambió.' ) );
         }
 
         $old_slugs = get_post_meta( $post_id, '_utp_old_slugs', true );

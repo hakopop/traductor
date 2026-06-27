@@ -459,11 +459,11 @@ jQuery(document).ready(function($) {
                     errors++;
                 }
 
-                btn.text('Traduciendo... (' + completed + '/' + selectedIds.length + ')');
-                processNext();
+                btn.text('Traduciendo... (' + completed + '/' + selectedIds.length + ') - Pausa Anti-Bloqueo...');
+                setTimeout(processNext, 4200); // 4.2 segundos de pausa (15 req/min)
             }).fail(function() {
                 errors++;
-                processNext();
+                setTimeout(processNext, 4200);
             });
         }
 
@@ -560,11 +560,69 @@ jQuery(document).ready(function($) {
         return `<tr>
             <th scope="row" class="check-column"><input type="checkbox" name="url_ids[]" value="${item.id}" class="utp-url-cb"></th>
             <td><strong>${item.id}</strong> - ${item.title}</td>
-            <td id="slug-cell-${item.id}"><code>${item.slug}</code></td>
+            <td id="slug-cell-${item.id}">
+                <code class="utp-slug-display" data-id="${item.id}">${item.slug}</code>
+                <div class="utp-slug-edit-container" id="slug-edit-container-${item.id}" style="display:none; margin-top:5px;">
+                    <input type="text" value="${item.slug}" id="slug-input-${item.id}" style="width:100%; margin-bottom:5px;" />
+                    <button type="button" class="button button-small utp-save-slug-btn" data-id="${item.id}">Guardar</button>
+                    <button type="button" class="button button-small utp-cancel-slug-btn" data-id="${item.id}">Cancelar</button>
+                </div>
+            </td>
             <td id="old-slugs-cell-${item.id}" style="color:#888;">${item.old_slugs || '-'}</td>
-            <td><a href="${item.permalink}" target="_blank">Ver ↗</a></td>
+            <td>
+                <button type="button" class="button utp-edit-slug-btn" data-id="${item.id}">✏️ Editar</button>
+                <a href="${item.permalink}" target="_blank" class="button">Ver ↗</a>
+            </td>
         </tr>`;
     }
+
+    // --- LÓGICA DE EDICIÓN MANUAL ---
+    $(document).on('click', '.utp-edit-slug-btn', function() {
+        let id = $(this).data('id');
+        $('#slug-cell-' + id + ' .utp-slug-display').hide();
+        $('#slug-edit-container-' + id).show();
+    });
+
+    $(document).on('click', '.utp-cancel-slug-btn', function() {
+        let id = $(this).data('id');
+        $('#slug-edit-container-' + id).hide();
+        $('#slug-cell-' + id + ' .utp-slug-display').show();
+    });
+
+    $(document).on('click', '.utp-save-slug-btn', function() {
+        let btn = $(this);
+        let id = btn.data('id');
+        let newSlug = $('#slug-input-' + id).val().trim();
+        
+        if (!newSlug) {
+            alert('El slug no puede estar vacío.');
+            return;
+        }
+
+        btn.prop('disabled', true).text('⏳');
+
+        $.post(utpData.ajaxurl, {
+            action: 'utp_save_manual_url',
+            nonce: utpData.nonce,
+            post_id: id,
+            new_slug: newSlug
+        }, function(response) {
+            btn.prop('disabled', false).text('Guardar');
+            if (response.success) {
+                $('#slug-cell-' + id + ' .utp-slug-display').text(response.data.slug).show();
+                $('#slug-edit-container-' + id).hide();
+                if (response.data.old_slugs) {
+                    $('#old-slugs-cell-' + id).html(response.data.old_slugs);
+                }
+            } else {
+                alert('Error: ' + response.data);
+            }
+        }).fail(function() {
+            btn.prop('disabled', false).text('Guardar');
+            alert('Error de red.');
+        });
+    });
+    // --------------------------------
 
     function loadUrls(page) {
         let btn = $('#utp-load-more-urls-btn');
@@ -647,11 +705,11 @@ jQuery(document).ready(function($) {
                     errors++;
                     console.error('Error traduciendo URL ' + id, response.data);
                 }
-                btn.text(`Traduciendo... (${completed + errors}/${selectedIds.length})`);
-                processNextUrl();
+                btn.text(`Traduciendo... (${completed + errors}/${selectedIds.length}) - Esperando 4s...`);
+                setTimeout(processNextUrl, 4200);
             }).fail(function() {
                 errors++;
-                processNextUrl();
+                setTimeout(processNextUrl, 4200);
             });
         }
 

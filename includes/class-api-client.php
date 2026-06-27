@@ -49,6 +49,9 @@ class UTP_API_Client {
             case 'gemini':
                 $translated = self::batch_sequential( array_values( $to_translate ), $target_lang, $api_key, 'gemini' );
                 break;
+            case 'openrouter':
+                $translated = self::batch_sequential( array_values( $to_translate ), $target_lang, $api_key, 'openrouter' );
+                break;
             default:
                 $translated = self::batch_sequential( array_values( $to_translate ), $target_lang, $api_key, 'openai' );
         }
@@ -173,9 +176,18 @@ class UTP_API_Client {
     private static function batch_sequential( $texts, $target_lang, $api_key, $provider ) {
         $out = array();
         foreach ( $texts as $text ) {
-            $t = ( 'gemini' === $provider )
-                ? self::translate_gemini( $text, $target_lang, $api_key )
-                : self::translate_openai( $text, $target_lang, $api_key );
+            switch ( $provider ) {
+                case 'gemini':
+                    $t = self::translate_gemini( $text, $target_lang, $api_key );
+                    break;
+                case 'openrouter':
+                    $t = self::translate_openrouter( $text, $target_lang, $api_key );
+                    break;
+                case 'openai':
+                default:
+                    $t = self::translate_openai( $text, $target_lang, $api_key );
+                    break;
+            }
             if ( is_wp_error( $t ) ) return $t;
             $out[] = $t;
         }
@@ -204,6 +216,56 @@ class UTP_API_Client {
         }
         $msg = isset( $data['error']['message'] ) ? $data['error']['message'] : 'Error en OpenAI API';
         return new WP_Error( 'api_error', $msg );
+    }
+
+    private static function translate_openrouter( $text, $target_lang, $api_key ) {
+        $url = 'https://openrouter.ai/api/v1/chat/completions';
+        $model = get_option( 'utp_openrouter_model', 'google/gemini-2.0-flash-lite-preview-02-05:free' );
+        
+        $body = array(
+            'model'       => $model,
+            'messages'    => array(
+                array(
+                    'role'    => 'system',
+                    'content' => "You are a professional translator. You output ONLY the exact translated text. NO conversational text. NO quotes. NO explanations. NO markdown formatting. Keep any shortcodes exactly as they are. Target language: $target_lang."
+                ),
+                array(
+                    'role'    => 'user',
+                    'content' => $text
+                )
+            ),
+            'temperature' => 0.0,
+        );
+
+        $response = wp_remote_post( $url, array(
+            'headers' => array(
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $api_key,
+                'HTTP-Referer'  => site_url(),
+                'X-Title'       => 'Universal Translator Pro'
+            ),
+            'body'    => wp_json_encode( $body ),
+            'timeout' => self::HTTP_TIMEOUT,
+        ) );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        $code = wp_remote_retrieve_response_code( $response );
+        $body = wp_remote_retrieve_body( $response );
+        $data = json_decode( $body, true );
+
+        if ( $code !== 200 ) {
+            $msg = isset( $data['error']['message'] ) ? $data['error']['message'] : 'OpenRouter API Error';
+            return new WP_Error( 'api_error', $msg );
+        }
+
+        if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
+            return new WP_Error( 'api_error', 'Respuesta inesperada de OpenRouter.' );
+        }
+
+        return trim( $data['choices'][0]['message']['content'] );
     }
 
     private static function translate_gemini( $text, $target_lang, $api_key ) {

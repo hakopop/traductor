@@ -24,12 +24,20 @@
                         <option value="openai" <?php selected( get_option('utp_api_type'), 'openai' ); ?>>OpenAI (ChatGPT)</option>
                         <option value="google" <?php selected( get_option('utp_api_type'), 'google' ); ?>>Google Translate API</option>
                         <option value="gemini" <?php selected( get_option('utp_api_type'), 'gemini' ); ?>>Gemini API (Google AI Studio)</option>
+                        <option value="openrouter" <?php selected( get_option('utp_api_type'), 'openrouter' ); ?>>OpenRouter (Modelos 100% Gratis y Libres)</option>
                     </select>
                 </td>
                 </tr>
                 <tr valign="top">
                 <th scope="row">API Key</th>
                 <td><input type="password" name="utp_api_key" value="<?php echo esc_attr( get_option('utp_api_key') ); ?>" class="regular-text" autocomplete="off" /></td>
+                </tr>
+                <tr valign="top">
+                <th scope="row">Modelo (Solo para OpenRouter)</th>
+                <td>
+                    <input type="text" name="utp_openrouter_model" value="<?php echo esc_attr( get_option('utp_openrouter_model', 'google/gemini-2.0-flash-lite-preview-02-05:free') ); ?>" class="regular-text" />
+                    <p class="description">Ejemplos: <code>google/gemini-2.0-flash-lite-preview-02-05:free</code>, <code>qwen/qwen-2-7b-instruct:free</code>. <a href="https://openrouter.ai/models?max_price=0" target="_blank">Ver lista de gratuitos</a>.</p>
+                </td>
                 </tr>
                 <tr valign="top">
                 <th scope="row">Campos Meta Excluidos</th>
@@ -150,7 +158,7 @@
                     <th>ID / Título</th>
                     <th>URL Actual (Slug)</th>
                     <th>Historial de URLs Antiguas (Se redirigen 301)</th>
-                    <th>Enlace Real</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody id="utp-urls-list">

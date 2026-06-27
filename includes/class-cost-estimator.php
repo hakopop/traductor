@@ -5,10 +5,11 @@ class UTP_Cost_Estimator {
 
     // Tarifas por carácter (aprox.). Centralizadas para PHP y JS.
     private static $rates = array(
-        'deepl'  => 0.000025,
-        'openai' => 0.0000025,
-        'google' => 0.000020,
-        'gemini' => 0.00000035,
+        'deepl'      => 0.000025,
+        'openai'     => 0.0000025,
+        'google'     => 0.000020,
+        'gemini'     => 0.00000035,
+        'openrouter' => 0.0000,
     );
 
     public static function get_rates() {

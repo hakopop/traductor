@@ -59,6 +59,11 @@ function utp_register_settings() {
         'type'              => 'string',
         'sanitize_callback' => 'sanitize_text_field',
     ) );
+    register_setting( 'utp_options_group', 'utp_openrouter_model', array(
+        'type'              => 'string',
+        'sanitize_callback' => 'sanitize_text_field',
+        'default'           => 'google/gemini-2.0-flash-lite-preview-02-05:free',
+    ) );
     register_setting( 'utp_options_group', 'utp_excluded_meta', array(
         'type'              => 'string',
         'sanitize_callback' => 'sanitize_textarea_field',
@@ -67,7 +72,7 @@ function utp_register_settings() {
 }
 
 function utp_sanitize_api_type( $value ) {
-    $allowed = array( 'deepl', 'openai', 'google', 'gemini' );
+    $allowed = array( 'deepl', 'openai', 'google', 'gemini', 'openrouter' );
     return in_array( $value, $allowed, true ) ? $value : 'deepl';
 }
 
@@ -79,7 +84,7 @@ function utp_admin_scripts( $hook ) {
     }
 
     wp_enqueue_style( 'utp-admin-css', UTP_PLUGIN_URL . 'assets/admin.css', array(), UTP_VERSION );
-    wp_enqueue_script( 'utp-admin-js', UTP_PLUGIN_URL . 'assets/admin.js', array( 'jquery' ), UTP_VERSION, true );
+    wp_enqueue_script( 'utp-admin-js', UTP_PLUGIN_URL . 'assets/admin.js', array( 'jquery' ), time(), true );
 
     // Variables for JS. Se incluyen las tarifas para que el estimador de costos
     // sea instantáneo en el navegador (sin viajes AJAX extra).
