@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Universal Translator 
  * Description: Traductor masivo y permanente para WordPress con editor manual y estimador de costos de API.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: kiza
  */
 
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'UTP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'UTP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'UTP_VERSION', '1.1.0' );
+define( 'UTP_VERSION', '1.2.0' );
 
 // Includes (una sola vez aquí; ya no se repiten require_once dentro de los handlers AJAX)
 require_once UTP_PLUGIN_DIR . 'includes/class-cost-estimator.php';

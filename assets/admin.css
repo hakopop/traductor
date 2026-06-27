@@ -17,3 +17,56 @@
 .utp-meta-input { font-family: monospace; width: 100%; }
 textarea.utp-meta-input { flex-grow: 1; min-height: 100px; }
 hr { border-top: 1px solid #eee; margin-top: 20px; }
+
+/* Acordeón de campos por post */
+.utp-fields-row td {
+    border-top: 2px solid #e2e4e7;
+}
+.utp-fields-accordion {
+    background: #f9f9f9;
+    border-top: 1px dashed #ccd0d4;
+}
+
+/* Chips de campo */
+.utp-field-chip {
+    transition: box-shadow 0.15s ease, transform 0.1s ease;
+    user-select: none;
+}
+.utp-field-chip:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
+}
+.utp-field-chip input[type="checkbox"] {
+    flex-shrink: 0;
+    cursor: pointer;
+    width: 15px;
+    height: 15px;
+}
+
+/* Fila de acordeón animada */
+.utp-fields-row {
+    transition: all 0.2s ease;
+}
+
+/* Post row con acordeón activo */
+.utp-post-row.utp-accordion-open > td {
+    background: #f0f7ff !important;
+}
+
+/* Badge de idioma desconocido */
+.utp-lang-unknown-badge {
+    color: #d63638;
+    font-weight: bold;
+}
+
+/* Botón toggle campos */
+.utp-toggle-fields-btn {
+    font-size: 12px;
+    padding: 2px 8px;
+    height: auto;
+}
+.utp-toggle-fields-btn.open {
+    background: #f0f7ff;
+    border-color: #2271b1;
+    color: #2271b1;
+}

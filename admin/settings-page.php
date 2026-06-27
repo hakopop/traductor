@@ -109,8 +109,14 @@
             <div id="utp-lang-counts" style="font-size:16px; margin-bottom:10px;">
                 Cargando conteo...
             </div>
-            <button class="button" id="utp-scan-langs-btn">Escanear Idiomas Desconocidos (API)</button>
-            <p class="description">Esto detectará el idioma de los posts que dicen "?" y guardará el resultado.</p>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                <button type="button" class="button" id="utp-scan-langs-btn">Escanear Idiomas Desconocidos (API)</button>
+                <button type="button" class="button" id="utp-rescan-langs-btn">Re-escanear Todos los Idiomas (API)</button>
+            </div>
+            <p class="description">
+                <strong>Escanear Idiomas Desconocidos:</strong> Detectará el idioma de los posts que dicen "?" y guardará el resultado.<br>
+                <strong>Re-escanear Todos los Idiomas:</strong> Volverá a detectar el idioma de todos los posts cargados en la lista inferior, sobrescribiendo el idioma guardado.
+            </p>
         </div>
 
         <div class="utp-estimator-box">

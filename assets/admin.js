@@ -1,4 +1,4 @@
-jQuery(document).ready(function($) {
+jQuery(document).ready(function ($) {
     // Estado local
     window.utpPostsData = [];
     let currentPage = 0;
@@ -10,7 +10,7 @@ jQuery(document).ready(function($) {
     }
 
     // Test API Connection
-    $('#utp-test-api-btn').click(function(e) {
+    $('#utp-test-api-btn').click(function (e) {
         e.preventDefault();
         let btn = $(this);
         let res = $('#utp-test-api-result');
@@ -21,21 +21,21 @@ jQuery(document).ready(function($) {
         $.post(utpData.ajaxurl, {
             action: 'utp_test_api',
             nonce: utpData.nonce
-        }, function(response) {
+        }, function (response) {
             btn.prop('disabled', false).text('Probar Conexión API');
             if (response.success) {
                 res.css('color', 'green').text('✅ ' + response.data);
             } else {
                 res.css('color', '#d63638').text('❌ Error: ' + response.data);
             }
-        }).fail(function() {
+        }).fail(function () {
             btn.prop('disabled', false).text('Probar Conexión API');
             res.css('color', '#d63638').text('❌ Error de red al intentar conectar.');
         });
     });
 
     // Tabs
-    $('.utp-nav-tab-wrapper a').click(function(e){
+    $('.utp-nav-tab-wrapper a').click(function (e) {
         e.preventDefault();
         $('.utp-nav-tab-wrapper a').removeClass('nav-tab-active');
         $(this).addClass('nav-tab-active');
@@ -59,19 +59,18 @@ jQuery(document).ready(function($) {
         let html = '';
         for (let lang in counts) {
             let label = lang === '?' ? 'Desconocido' : lang;
-            html += `<span style="display:inline-block; margin-right:15px; padding:5px 10px; background:#f0f0f1; border-radius:3px;">
+            let color = lang === '?' ? '#d63638' : '#2271b1';
+            html += `<span style="display:inline-block; margin-right:12px; padding:4px 10px; background:#f0f0f1; border-radius:3px; border-left:3px solid ${color};">
                 <strong>${label}:</strong> ${counts[lang]}
             </span>`;
         }
         $('#utp-lang-counts').html(html);
     }
 
-    // Carga paginada: la lista ahora es ligera (sin contenido completo),
-    // el contenido se pide solo al abrir el editor de un post.
     function loadPosts(page) {
         let btn = $('#utp-load-more-btn');
         btn.prop('disabled', true).text('Cargando...');
-        
+
         let filterType = $('#utp-post-type-filter').val();
 
         $.post(utpData.ajaxurl, {
@@ -79,7 +78,7 @@ jQuery(document).ready(function($) {
             nonce: utpData.nonce,
             paged: page,
             filter_type: filterType
-        }, function(response) {
+        }, function (response) {
             btn.prop('disabled', false).text('Cargar más posts');
             if (!response.success) return;
 
@@ -96,33 +95,53 @@ jQuery(document).ready(function($) {
         });
     }
 
-    $('#utp-load-more-btn').click(function() {
+    $('#utp-load-more-btn').click(function () {
         loadPosts(currentPage + 1);
     });
 
-    $('#utp-filter-btn').click(function() {
+    $('#utp-filter-btn').click(function () {
         window.utpPostsData = [];
         $('#utp-post-list').empty();
+        postsLoaded = false;
         loadPosts(1);
     });
 
+    // =========================================================
+    // FILA PRINCIPAL DE CADA POST
+    // =========================================================
     function rowHtml(post) {
         let safeTitle = $('<div>').text(post.title).html();
-        let backupBtn = post.has_backup ? 
-            `<button type="button" class="button utp-restore-btn" data-id="${post.id}" style="color:#d63638; border-color:#d63638;">Restaurar Original</button>` : 
-            `<span style="color:#888; font-size:12px;">Sin backup</span>`;
-            
-        return `<tr>
-            <th scope="row" class="check-column"><input type="checkbox" name="post_ids[]" value="${post.id}" class="utp-post-cb"></th>
+        let langBadge = post.detected_lang === '?'
+            ? `<span style="color:#d63638; font-weight:bold;" title="Idioma desconocido">⚠️ ?</span>`
+            : `<strong>${post.detected_lang}</strong>`;
+
+        let backupBtn = post.has_backup
+            ? `<button type="button" class="button utp-restore-btn" data-id="${post.id}" style="color:#d63638; border-color:#d63638;" title="Restaurar al texto original">↩ Restaurar</button>`
+            : `<span style="color:#999; font-size:11px;">Sin backup</span>`;
+
+        return `<tr class="utp-post-row" data-post-id="${post.id}">
+            <th scope="row" class="check-column">
+                <input type="checkbox" name="post_ids[]" value="${post.id}" class="utp-post-cb" ${post.detected_lang === '?' ? 'title="Idioma desconocido – escanear primero"' : ''}>
+            </th>
             <td>${post.id}</td>
             <td><strong>${post.type}</strong></td>
-            <td id="lang-cell-${post.id}"><strong>${post.detected_lang}</strong></td>
+            <td id="lang-cell-${post.id}">${langBadge}</td>
             <td><strong>${safeTitle}</strong></td>
             <td>
-                <button type="button" class="button utp-edit-btn" data-id="${post.id}">Editor Manual</button>
-                <button type="button" class="button utp-quick-trans-btn" data-id="${post.id}">Autotraducir</button>
+                <button type="button" class="button utp-toggle-fields-btn" data-id="${post.id}" data-open="0">
+                    ▶ Ver campos
+                </button>
+                <button type="button" class="button utp-edit-btn" data-id="${post.id}" style="margin-left:4px;">✏️ Editor</button>
+                <button type="button" class="button utp-quick-trans-btn" data-id="${post.id}" style="margin-left:4px;">🔄 Autotraducir</button>
             </td>
             <td>${backupBtn}</td>
+        </tr>
+        <tr class="utp-fields-row" id="fields-row-${post.id}" style="display:none; background:#fafafa;">
+            <td colspan="7" style="padding:0;">
+                <div class="utp-fields-accordion" id="fields-accordion-${post.id}" style="padding:12px 20px;">
+                    <span style="color:#888;">Cargando campos...</span>
+                </div>
+            </td>
         </tr>`;
     }
 
@@ -135,62 +154,311 @@ jQuery(document).ready(function($) {
         }
     }
 
-    // Language Scan
-    $('#utp-scan-langs-btn').click(function() {
+    // =========================================================
+    // ACORDEÓN DE CAMPOS POR POST
+    // =========================================================
+
+    // Ícono según tipo de campo
+    function fieldIcon(type) {
+        switch (type) {
+            case 'image': return '🖼️';
+            case 'url': return '🔗';
+            case 'json': return '{ }';
+            default: return '📝';
+        }
+    }
+
+    // Previsualización corta del valor
+    function fieldPreview(value, type) {
+        if (!value) return '';
+        let safe = $('<div>').text(value).html();
+        if (type === 'image') {
+            return `<img src="${safe}" style="height:36px; width:auto; border-radius:3px; vertical-align:middle; margin-left:6px;" onerror="this.style.display='none'">`;
+        }
+        let truncated = value.length > 80 ? value.substring(0, 80) + '…' : value;
+        return `<span style="color:#555; font-size:12px; margin-left:6px;">${$('<div>').text(truncated).html()}</span>`;
+    }
+
+    function renderFieldsAccordion(postId, detail) {
+        let fieldsInfo = detail.fields_info || {};
+        let html = `<div style="margin-bottom:8px; display:flex; align-items:center; gap:10px;">
+            <strong style="font-size:13px;">Campos del Post #${postId}</strong>
+            <button type="button" class="button button-small utp-select-all-fields" data-post="${postId}">✓ Seleccionar todos</button>
+            <button type="button" class="button button-small utp-deselect-all-fields" data-post="${postId}">☐ Deseleccionar todos</button>
+            <button type="button" class="button button-primary button-small utp-translate-selected-btn" data-id="${postId}" style="margin-left:auto;">
+                🚀 Traducir Seleccionados
+            </button>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">`;
+
+        let fieldCount = 0;
+        for (let key in fieldsInfo) {
+            let field = fieldsInfo[key];
+            let type = field.type || 'text';
+            let isTranslatable = field.translatable !== false;
+            let isDefault = isTranslatable; // marcado por defecto si es text/json
+            let icon = fieldIcon(type);
+            let preview = fieldPreview(field.value, type);
+            let labelKey = key === '_utp_title' ? 'Título' : key === '_utp_content' ? 'Contenido' : key;
+            let chipColor = type === 'image' ? '#fff3cd' : type === 'url' ? '#e8f4fd' : '#f0f0f0';
+            let borderColor = type === 'image' ? '#ffc107' : type === 'url' ? '#2271b1' : '#ccc';
+
+            html += `<label class="utp-field-chip" style="
+                display:inline-flex; align-items:center; gap:6px;
+                padding:6px 10px; border-radius:4px;
+                background:${chipColor}; border:1px solid ${borderColor};
+                cursor:pointer; font-size:12px; max-width:320px;
+                ${!isTranslatable ? 'opacity:0.75;' : ''}
+            " title="${type}">
+                <input type="checkbox" 
+                    class="utp-field-cb" 
+                    data-post="${postId}" 
+                    data-field="${key}"
+                    ${isDefault ? 'checked' : ''}
+                >
+                <span>${icon}</span>
+                <span style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;" title="${labelKey}">${labelKey}</span>
+                ${preview}
+            </label>`;
+            fieldCount++;
+        }
+
+        if (fieldCount === 0) {
+            html += `<span style="color:#888; font-style:italic;">No hay campos traducibles para este post.</span>`;
+        }
+
+        html += `</div>`;
+        $('#fields-accordion-' + postId).html(html);
+    }
+
+    // Click en "Ver campos"
+    $(document).on('click', '.utp-toggle-fields-btn', function () {
+        let btn = $(this);
+        let postId = btn.data('id');
+        let isOpen = btn.data('open') == 1;
+        let row = $('#fields-row-' + postId);
+
+        if (isOpen) {
+            row.hide();
+            btn.data('open', 0).text('▶ Ver campos');
+            return;
+        }
+
+        // Si ya se cargaron los campos, solo mostrar
+        if (btn.data('loaded')) {
+            row.show();
+            btn.data('open', 1).text('▼ Ocultar campos');
+            return;
+        }
+
+        btn.prop('disabled', true).text('Cargando...');
+
+        $.post(utpData.ajaxurl, {
+            action: 'utp_get_post_detail',
+            nonce: utpData.nonce,
+            post_id: postId
+        }, function (response) {
+            btn.prop('disabled', false).text('▼ Ocultar campos');
+            btn.data('open', 1).data('loaded', 1);
+            if (!response.success) {
+                $('#fields-accordion-' + postId).html('<span style="color:#d63638;">Error al cargar campos.</span>');
+                row.show();
+                return;
+            }
+            renderFieldsAccordion(postId, response.data);
+            row.show();
+        }).fail(function () {
+            btn.prop('disabled', false).text('▶ Ver campos');
+            alert('Error de red al cargar campos.');
+        });
+    });
+
+    // Seleccionar / deseleccionar todos los campos de un post
+    $(document).on('click', '.utp-select-all-fields', function () {
+        let postId = $(this).data('post');
+        $(`.utp-field-cb[data-post="${postId}"]`).prop('checked', true);
+    });
+    $(document).on('click', '.utp-deselect-all-fields', function () {
+        let postId = $(this).data('post');
+        $(`.utp-field-cb[data-post="${postId}"]`).prop('checked', false);
+    });
+
+    // Traducir campos seleccionados desde el acordeón
+    $(document).on('click', '.utp-translate-selected-btn', function () {
+        let btn = $(this);
+        let postId = btn.data('id');
+        let targetLang = $('#utp-target-lang').val();
+
+        let fieldsToTranslate = [];
+        $(`.utp-field-cb[data-post="${postId}"]:checked`).each(function () {
+            fieldsToTranslate.push($(this).data('field'));
+        });
+
+        if (fieldsToTranslate.length === 0) {
+            alert('Selecciona al menos un campo para traducir.');
+            return;
+        }
+
+        let fieldLabels = fieldsToTranslate.map(f => f === '_utp_title' ? 'Título' : f === '_utp_content' ? 'Contenido' : f).join(', ');
+        if (!confirm(`Se traducirán ${fieldsToTranslate.length} campo(s): ${fieldLabels}\nIdioma destino: ${targetLang}\n¿Continuar?`)) return;
+
+        btn.prop('disabled', true).text('Traduciendo...');
+
+        $.post(utpData.ajaxurl, {
+            action: 'utp_auto_translate',
+            nonce: utpData.nonce,
+            post_id: postId,
+            target_lang: targetLang,
+            fields_to_translate: fieldsToTranslate
+        }, function (response) {
+            btn.prop('disabled', false).text('🚀 Traducir Seleccionados');
+            if (response.success) {
+                let post = findPost(postId);
+                if (post) {
+                    post.detected_lang = targetLang;
+                    if (fieldsToTranslate.includes('_utp_title')) {
+                        post.title = response.data.title;
+                    }
+                    $('#lang-cell-' + postId).html('<strong>' + targetLang + '</strong>');
+                    updateLangCounts();
+                }
+                // Marcar backup disponible
+                let restoreCell = $(`.utp-restore-btn[data-id="${postId}"]`);
+                if (restoreCell.length === 0) {
+                    // Actualizar la celda de backup si era "Sin backup"
+                    $(`.utp-post-row[data-post-id="${postId}"] td:last-child`).html(
+                        `<button type="button" class="button utp-restore-btn" data-id="${postId}" style="color:#d63638; border-color:#d63638;">↩ Restaurar</button>`
+                    );
+                }
+                alert('¡Campos traducidos exitosamente!');
+            } else {
+                alert('Error de API: ' + (response.data || 'Revisa tu API Key'));
+            }
+        }).fail(function () {
+            btn.prop('disabled', false).text('🚀 Traducir Seleccionados');
+            alert('Error de red o timeout del servidor.');
+        });
+    });
+
+    // =========================================================
+    // LANGUAGE SCAN (Mejorado – muestra progreso detallado)
+    // =========================================================
+    $('#utp-scan-langs-btn').click(function () {
         let toScan = window.utpPostsData.filter(p => p.detected_lang === '?');
         if (toScan.length === 0) {
             alert('Todos los posts ya tienen el idioma detectado.');
             return;
         }
 
-        if (!confirm(`Se escanearán ${toScan.length} posts usando la API. ¿Deseas continuar?`)) return;
+        if (!confirm(`Se escanearán ${toScan.length} posts usando la API (con filtrado inteligente de stop-words). ¿Deseas continuar?`)) return;
 
         let btn = $(this);
         btn.prop('disabled', true).text('Escaneando...');
 
         let completed = 0;
+        let unknown = 0;
+
         function scanNext() {
-            if (completed >= toScan.length) {
+            if (completed + unknown >= toScan.length) {
                 btn.prop('disabled', false).text('Escanear Idiomas Desconocidos (API)');
-                alert('Escaneo completado.');
+                alert(`Escaneo completado.\n✅ Detectados: ${completed}\n❓ Siguen desconocidos: ${unknown}`);
                 updateLangCounts();
+                updateEstimator();
                 return;
             }
 
-            let post = toScan[completed];
+            let post = toScan[completed + unknown];
             $.post(utpData.ajaxurl, {
                 action: 'utp_detect_language',
                 nonce: utpData.nonce,
                 post_id: post.id
-            }, function(response) {
+            }, function (response) {
                 if (response.success && response.data !== 'UNKNOWN') {
                     post.detected_lang = response.data;
                     $('#lang-cell-' + post.id).html('<strong>' + post.detected_lang + '</strong>');
+                    completed++;
+                } else {
+                    unknown++;
                 }
-                completed++;
-                btn.text('Escaneando... (' + completed + '/' + toScan.length + ')');
+                btn.text(`Escaneando... (${completed + unknown}/${toScan.length}) ✅${completed} ❓${unknown}`);
                 scanNext();
-            }).fail(function() {
-                completed++;
+            }).fail(function () {
+                unknown++;
                 scanNext();
             });
         }
         scanNext();
     });
 
-    // Estimador de costos INSTANTÁNEO (sin AJAX):
-    // el servidor ya envió los caracteres por post y las tarifas por API.
+    // =========================================================
+    // LANGUAGE RE-SCAN (Volver a escanear todos los posts cargados)
+    // =========================================================
+    $('#utp-rescan-langs-btn').click(function () {
+        let toScan = window.utpPostsData;
+        if (toScan.length === 0) {
+            alert('No hay posts cargados en la lista para escanear.');
+            return;
+        }
+
+        if (!confirm(`Se volverá a escanear el idioma de los ${toScan.length} posts cargados usando la API, lo cual sobrescribirá el idioma guardado. ¿Deseas continuar?`)) return;
+
+        let btn = $(this);
+        btn.prop('disabled', true).text('Re-escaneando...');
+
+        let completed = 0;
+        let unknown = 0;
+
+        function scanNext() {
+            if (completed + unknown >= toScan.length) {
+                btn.prop('disabled', false).text('Re-escanear Todos los Idiomas (API)');
+                alert(`Re-escaneo completado.\n✅ Detectados: ${completed}\n❓ Siguen desconocidos: ${unknown}`);
+                updateLangCounts();
+                updateEstimator();
+                return;
+            }
+
+            let post = toScan[completed + unknown];
+            $.post(utpData.ajaxurl, {
+                action: 'utp_detect_language',
+                nonce: utpData.nonce,
+                post_id: post.id
+            }, function (response) {
+                if (response.success && response.data !== 'UNKNOWN') {
+                    post.detected_lang = response.data;
+                    $('#lang-cell-' + post.id).html('<strong>' + post.detected_lang + '</strong>');
+                    completed++;
+                } else {
+                    unknown++;
+                }
+                btn.text(`Re-escaneando... (${completed + unknown}/${toScan.length}) ✅${completed} ❓${unknown}`);
+                scanNext();
+            }).fail(function () {
+                unknown++;
+                scanNext();
+            });
+        }
+        scanNext();
+    });
+
+    // =========================================================
+    // ESTIMADOR DE COSTOS
+    // Excluye posts con idioma '?' (desconocido) con advertencia
+    // =========================================================
     function updateEstimator() {
         let selectedIds = [];
-        let skippedCount = 0;
+        let skippedSameLang = 0;
+        let skippedUnknown = 0;
         let totalChars = 0;
         let targetLang = $('#utp-target-lang').val();
 
-        $('.utp-post-cb:checked').each(function() {
+        $('.utp-post-cb:checked').each(function () {
             let post = findPost($(this).val());
             if (!post) return;
-            if (post.detected_lang === targetLang) {
-                skippedCount++;
+
+            if (post.detected_lang === '?') {
+                skippedUnknown++;
+            } else if (post.detected_lang === targetLang) {
+                skippedSameLang++;
             } else {
                 selectedIds.push(post.id);
                 totalChars += post.chars || 0;
@@ -200,40 +468,54 @@ jQuery(document).ready(function($) {
         window.utpValidIdsToTranslate = selectedIds;
         $('#utp-export-btn').prop('disabled', $('.utp-post-cb:checked').length === 0);
 
+        let omitParts = [];
+        if (skippedSameLang > 0) {
+            omitParts.push(`<span style="color:#d63638">${skippedSameLang} ya en ${targetLang}</span>`);
+        }
+        if (skippedUnknown > 0) {
+            omitParts.push(`<span style="color:#e07914">⚠️ ${skippedUnknown} idioma desconocido (escanear primero)</span>`);
+        }
+
         if (selectedIds.length > 0) {
             let rate = (utpData.rates && utpData.rates[utpData.apiType]) || 0;
             let cost = (totalChars * rate).toFixed(4);
-            let omitText = skippedCount > 0 ? ` <span style="color:#d63638">(${skippedCount} omitidos por estar ya en ${targetLang})</span>` : '';
+            let omitTxt = omitParts.length > 0 ? ` &nbsp;|&nbsp; ` + omitParts.join(' &nbsp;|&nbsp; ') : '';
 
-            $('#utp-char-count').html(totalChars.toLocaleString() + omitText);
+            $('#utp-char-count').html(totalChars.toLocaleString() + omitTxt);
             $('#utp-cost-estimate').text('$' + cost + ' (' + utpData.apiType + ')');
             $('#utp-auto-translate-btn').prop('disabled', false).text('Traducir ' + selectedIds.length + ' Posts (API)');
         } else {
-            $('#utp-char-count').html(skippedCount > 0 ? `<span style="color:#d63638">Todos los ${skippedCount} posts seleccionados ya están en ${targetLang}.</span>` : '0');
+            let emptyMsg = '0';
+            if (skippedSameLang > 0 || skippedUnknown > 0) {
+                emptyMsg = omitParts.join(' &nbsp;|&nbsp; ');
+            }
+            $('#utp-char-count').html(emptyMsg);
             $('#utp-cost-estimate').text('$0.00');
             $('#utp-auto-translate-btn').prop('disabled', true).text('Traducir Seleccionados (API)');
         }
     }
 
-    $(document).on('change', '.utp-post-cb, #cb-select-all', function() {
+    $(document).on('change', '.utp-post-cb, #cb-select-all', function () {
         if ($(this).attr('id') === 'cb-select-all') {
             $('.utp-post-cb').prop('checked', $(this).prop('checked'));
         }
         updateEstimator();
     });
 
-    $('#utp-target-lang').change(function() {
+    $('#utp-target-lang').change(function () {
         if ($('.utp-post-cb:checked').length > 0) {
             updateEstimator();
         }
     });
 
-    // Modal Builder Helper
+    // =========================================================
+    // MODAL EDITOR MANUAL
+    // =========================================================
     function buildRow(label, key, originalVal, isTextarea) {
         let escapedVal = $('<div>').text(originalVal).html();
-        let inputHtml = isTextarea ?
-            `<textarea class="widefat utp-meta-input" data-key="${key}" rows="4">${escapedVal}</textarea>` :
-            `<input type="text" class="widefat utp-meta-input" data-key="${key}" value="${escapedVal}" />`;
+        let inputHtml = isTextarea
+            ? `<textarea class="widefat utp-meta-input" data-key="${key}" rows="4">${escapedVal}</textarea>`
+            : `<input type="text" class="widefat utp-meta-input" data-key="${key}" value="${escapedVal}" />`;
 
         return `
         <div class="utp-editor-split">
@@ -248,8 +530,7 @@ jQuery(document).ready(function($) {
         </div><hr/>`;
     }
 
-    // Manual Editor Modal: el detalle (contenido + meta) se carga bajo demanda.
-    $(document).on('click', '.utp-edit-btn', function() {
+    $(document).on('click', '.utp-edit-btn', function () {
         let id = $(this).data('id');
         let btn = $(this);
 
@@ -259,8 +540,8 @@ jQuery(document).ready(function($) {
             action: 'utp_get_post_detail',
             nonce: utpData.nonce,
             post_id: id
-        }, function(response) {
-            btn.prop('disabled', false).text('Editor Manual');
+        }, function (response) {
+            btn.prop('disabled', false).text('✏️ Editor');
             if (!response.success) {
                 alert('Error: ' + response.data);
                 return;
@@ -284,18 +565,18 @@ jQuery(document).ready(function($) {
 
             $('#utp-dynamic-fields-container').html(html);
             $('#utp-manual-editor-modal').show();
-        }).fail(function() {
-            btn.prop('disabled', false).text('Editor Manual');
+        }).fail(function () {
+            btn.prop('disabled', false).text('✏️ Editor');
             alert('Error de red al cargar el post.');
         });
     });
 
-    $('.utp-close-modal').click(function() {
+    $('.utp-close-modal').click(function () {
         $('#utp-manual-editor-modal').hide();
     });
 
     // Save Manual Translation
-    $('#utp-btn-save-manual').click(function() {
+    $('#utp-btn-save-manual').click(function () {
         let btn = $(this);
         btn.prop('disabled', true).text('Guardando...');
 
@@ -304,7 +585,7 @@ jQuery(document).ready(function($) {
         let content = '';
         let meta = {};
 
-        $('.utp-meta-input').each(function() {
+        $('.utp-meta-input').each(function () {
             let key = $(this).data('key');
             let val = $(this).val();
             if (key === '_utp_title') {
@@ -323,10 +604,9 @@ jQuery(document).ready(function($) {
             title: title,
             content: content,
             meta: meta
-        }, function(response) {
+        }, function (response) {
             btn.prop('disabled', false).text('Guardar Permanentemente');
             if (response.success) {
-                // Reflejar el nuevo título en la tabla sin recargar
                 let post = findPost(post_id);
                 if (post) post.title = title;
                 $('#utp-manual-editor-modal').hide();
@@ -337,8 +617,10 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // Auto Translate Individual
-    $(document).on('click', '.utp-quick-trans-btn, #utp-btn-auto-fill', function() {
+    // =========================================================
+    // AUTO-TRADUCIR INDIVIDUAL (botón rápido de la tabla)
+    // =========================================================
+    $(document).on('click', '.utp-quick-trans-btn, #utp-btn-auto-fill', function () {
         let btn = $(this);
         let isModal = btn.attr('id') === 'utp-btn-auto-fill';
         let id = isModal ? $('#utp-edit-post-id').val() : btn.data('id');
@@ -346,7 +628,7 @@ jQuery(document).ready(function($) {
 
         let post = findPost(id);
         if (!isModal && post && post.detected_lang === targetLang) {
-            if(!confirm(`Este post ya está marcado como ${targetLang}. ¿Estás seguro de querer traducirlo de nuevo y gastar tokens?`)) {
+            if (!confirm(`Este post ya está marcado como ${targetLang}. ¿Estás seguro de querer traducirlo de nuevo y gastar tokens?`)) {
                 return;
             }
         }
@@ -358,39 +640,49 @@ jQuery(document).ready(function($) {
             nonce: utpData.nonce,
             post_id: id,
             target_lang: targetLang
-        }, function(response) {
-            btn.prop('disabled', false).text(isModal ? 'Autotraducir todos estos campos (API)' : 'Autotraducir');
+            // Sin fields_to_translate = traducir todo
+        }, function (response) {
+            btn.prop('disabled', false).text(isModal ? 'Autotraducir todos estos campos (API)' : '🔄 Autotraducir');
             if (response.success) {
                 if (isModal) {
                     $('.utp-meta-input[data-key="_utp_title"]').val(response.data.title);
                     $('.utp-meta-input[data-key="_utp_content"]').val(response.data.content);
                     for (let metaKey in response.data.meta) {
-                        $('.utp-meta-input[data-key="'+metaKey+'"]').val(response.data.meta[metaKey]);
+                        $('.utp-meta-input[data-key="' + metaKey + '"]').val(response.data.meta[metaKey]);
                     }
                 } else {
                     if (post) {
                         post.detected_lang = targetLang;
                         post.title = response.data.title;
                         $('#lang-cell-' + post.id).html('<strong>' + targetLang + '</strong>');
+                        // Marcar que ahora tiene backup
+                        let restoreCell = $(`.utp-restore-btn[data-id="${post.id}"]`);
+                        if (restoreCell.length === 0) {
+                            $(`.utp-post-row[data-post-id="${post.id}"] td:last-child`).html(
+                                `<button type="button" class="button utp-restore-btn" data-id="${post.id}" style="color:#d63638; border-color:#d63638;">↩ Restaurar</button>`
+                            );
+                        }
                         updateLangCounts();
                     }
-                    alert('Traducido permanentemente!');
+                    alert('¡Traducido permanentemente!');
                 }
             } else {
                 alert('Error de API: ' + (response.data || 'Revisa tu API Key'));
             }
-        }).fail(function() {
-            btn.prop('disabled', false).text(isModal ? 'Autotraducir todos estos campos (API)' : 'Autotraducir');
+        }).fail(function () {
+            btn.prop('disabled', false).text(isModal ? 'Autotraducir todos estos campos (API)' : '🔄 Autotraducir');
             alert('Error de red o timeout del servidor.');
         });
     });
 
-    // Restore Backup
-    $(document).on('click', '.utp-restore-btn', function() {
+    // =========================================================
+    // RESTAURAR BACKUP
+    // =========================================================
+    $(document).on('click', '.utp-restore-btn', function () {
         let btn = $(this);
         let id = btn.data('id');
-        
-        if(!confirm('¿Estás seguro de que deseas deshacer la traducción y restaurar el texto original de este elemento? Esto sobrescribirá la versión actual.')) return;
+
+        if (!confirm('¿Estás seguro de que deseas deshacer la traducción y restaurar el texto original de este elemento? Esto sobrescribirá la versión actual.')) return;
 
         btn.prop('disabled', true).text('Restaurando...');
 
@@ -398,25 +690,27 @@ jQuery(document).ready(function($) {
             action: 'utp_restore_backup',
             nonce: utpData.nonce,
             post_id: id
-        }, function(response) {
-            btn.prop('disabled', false).text('Restaurar Original');
+        }, function (response) {
+            btn.prop('disabled', false).text('↩ Restaurar');
             if (response.success) {
                 alert(response.data);
-                // Reload row data
                 window.utpPostsData = [];
                 $('#utp-post-list').empty();
-                loadPosts(currentPage);
+                postsLoaded = false;
+                loadPosts(1);
             } else {
                 alert('Error al restaurar: ' + response.data);
             }
-        }).fail(function() {
-            btn.prop('disabled', false).text('Restaurar Original');
+        }).fail(function () {
+            btn.prop('disabled', false).text('↩ Restaurar');
             alert('Error de red.');
         });
     });
 
-    // Batch Auto Translate
-    $('#utp-auto-translate-btn').click(function() {
+    // =========================================================
+    // TRADUCCIÓN MASIVA (Batch)
+    // =========================================================
+    $('#utp-auto-translate-btn').click(function () {
         let selectedIds = window.utpValidIdsToTranslate || [];
 
         if (selectedIds.length === 0) return;
@@ -447,7 +741,7 @@ jQuery(document).ready(function($) {
                 nonce: utpData.nonce,
                 post_id: id,
                 target_lang: targetLang
-            }, function(response) {
+            }, function (response) {
                 if (response.success) {
                     completed++;
                     if (post) {
@@ -461,7 +755,7 @@ jQuery(document).ready(function($) {
 
                 btn.text('Traduciendo... (' + completed + '/' + selectedIds.length + ')');
                 processNext();
-            }).fail(function() {
+            }).fail(function () {
                 errors++;
                 processNext();
             });
@@ -470,22 +764,24 @@ jQuery(document).ready(function($) {
         processNext();
     });
 
-    // Export Translations
-    $('#utp-export-btn').click(function() {
+    // =========================================================
+    // EXPORTAR / IMPORTAR
+    // =========================================================
+    $('#utp-export-btn').click(function () {
         let selectedIds = [];
-        $('.utp-post-cb:checked').each(function() {
+        $('.utp-post-cb:checked').each(function () {
             selectedIds.push($(this).val());
         });
         if (selectedIds.length === 0) return;
-        
+
         let btn = $(this);
         btn.prop('disabled', true).text('Generando...');
-        
+
         $.post(utpData.ajaxurl, {
             action: 'utp_export_translations',
             nonce: utpData.nonce,
             post_ids: selectedIds
-        }, function(response) {
+        }, function (response) {
             btn.prop('disabled', false).text('Exportar Seleccionados (.json)');
             if (response.success) {
                 let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(response.data));
@@ -496,23 +792,22 @@ jQuery(document).ready(function($) {
             } else {
                 alert('Error al exportar: ' + response.data);
             }
-        }).fail(function() {
+        }).fail(function () {
             btn.prop('disabled', false).text('Exportar Seleccionados (.json)');
             alert('Error de red.');
         });
     });
 
-    // Import Translations
-    $('#utp-import-btn').click(function() {
+    $('#utp-import-btn').click(function () {
         $('#utp-import-file').click();
     });
 
-    $('#utp-import-file').change(function(e) {
+    $('#utp-import-file').change(function (e) {
         let file = e.target.files[0];
         if (!file) return;
 
         let reader = new FileReader();
-        reader.onload = function(evt) {
+        reader.onload = function (evt) {
             try {
                 let json = JSON.parse(evt.target.result);
                 if (!Array.isArray(json)) {
@@ -528,7 +823,7 @@ jQuery(document).ready(function($) {
                     action: 'utp_import_translations',
                     nonce: utpData.nonce,
                     translations: JSON.stringify(json)
-                }, function(response) {
+                }, function (response) {
                     btn.prop('disabled', false).text('Importar Traducciones (.json)');
                     if (response.success) {
                         alert(response.data);
@@ -537,12 +832,12 @@ jQuery(document).ready(function($) {
                         alert('Error al importar: ' + response.data);
                     }
                     $('#utp-import-file').val('');
-                }).fail(function() {
+                }).fail(function () {
                     btn.prop('disabled', false).text('Importar Traducciones (.json)');
                     alert('Error de red o archivo demasiado grande. Verifica en consola.');
                     $('#utp-import-file').val('');
                 });
-            } catch(ex) {
+            } catch (ex) {
                 alert("Error al leer o parsear el archivo JSON.");
                 $('#utp-import-file').val('');
             }
@@ -550,7 +845,9 @@ jQuery(document).ready(function($) {
         reader.readAsText(file);
     });
 
-    // --- URL MANAGER LOGIC ---
+    // =========================================================
+    // URL MANAGER
+    // =========================================================
     window.utpUrlsData = [];
     window.urlsLoaded = false;
     let urlCurrentPage = 0;
@@ -574,7 +871,7 @@ jQuery(document).ready(function($) {
             action: 'utp_get_urls',
             nonce: utpData.nonce,
             paged: page
-        }, function(response) {
+        }, function (response) {
             btn.prop('disabled', false).text('Cargar más URLs');
             if (!response.success) return;
 
@@ -594,20 +891,20 @@ jQuery(document).ready(function($) {
         });
     }
 
-    $('#utp-load-more-urls-btn').click(function() {
+    $('#utp-load-more-urls-btn').click(function () {
         loadUrls(urlCurrentPage + 1);
     });
 
-    $(document).on('change', '.utp-url-cb, #cb-select-all-urls', function() {
+    $(document).on('change', '.utp-url-cb, #cb-select-all-urls', function () {
         if ($(this).attr('id') === 'cb-select-all-urls') {
             $('.utp-url-cb').prop('checked', $(this).prop('checked'));
         }
         $('#utp-auto-translate-urls-btn').prop('disabled', $('.utp-url-cb:checked').length === 0);
     });
 
-    $('#utp-auto-translate-urls-btn').click(function() {
+    $('#utp-auto-translate-urls-btn').click(function () {
         let selectedIds = [];
-        $('.utp-url-cb:checked').each(function() {
+        $('.utp-url-cb:checked').each(function () {
             selectedIds.push($(this).val());
         });
 
@@ -636,7 +933,7 @@ jQuery(document).ready(function($) {
                 nonce: utpData.nonce,
                 post_id: id,
                 target_lang: targetLang
-            }, function(response) {
+            }, function (response) {
                 if (response.success) {
                     completed++;
                     $('#slug-cell-' + id).html(`<code>${response.data.slug}</code>`);
@@ -649,7 +946,7 @@ jQuery(document).ready(function($) {
                 }
                 btn.text(`Traduciendo... (${completed + errors}/${selectedIds.length})`);
                 processNextUrl();
-            }).fail(function() {
+            }).fail(function () {
                 errors++;
                 processNextUrl();
             });
@@ -658,21 +955,21 @@ jQuery(document).ready(function($) {
         processNextUrl();
     });
 
-    // --- RATES EDITOR ---
-    // Botón "Restablecer" individual: carga el valor por defecto del data-default
-    $(document).on('click', '.utp-reset-rate-btn', function() {
+    // =========================================================
+    // RATES EDITOR
+    // =========================================================
+    $(document).on('click', '.utp-reset-rate-btn', function () {
         let key = $(this).data('key');
         let defaultVal = $(this).closest('tr').find('.utp-rate-input').data('default');
         $('#utp-rate-' + key).val(defaultVal);
     });
 
-    // Botón "Actualizar Tarifas": recopila los inputs y los envía vía AJAX
-    $('#utp-save-rates-btn').click(function() {
+    $('#utp-save-rates-btn').click(function () {
         let btn = $(this);
         let result = $('#utp-rates-result');
         let rates = {};
 
-        $('.utp-rate-input').each(function() {
+        $('.utp-rate-input').each(function () {
             let key = $(this).data('key');
             let val = parseFloat($(this).val());
             if (key && !isNaN(val) && val > 0) {
@@ -692,16 +989,15 @@ jQuery(document).ready(function($) {
             action: 'utp_save_rates',
             nonce: utpData.nonce,
             rates: rates
-        }, function(response) {
+        }, function (response) {
             btn.prop('disabled', false).text('Actualizar Tarifas');
             if (response.success) {
-                // Actualizar utpData.rates en memoria para que el estimador use los nuevos valores
                 utpData.rates = Object.assign(utpData.rates || {}, rates);
                 result.css('color', 'green').text('✅ ' + response.data);
             } else {
                 result.css('color', '#d63638').text('❌ ' + response.data);
             }
-        }).fail(function() {
+        }).fail(function () {
             btn.prop('disabled', false).text('Actualizar Tarifas');
             result.css('color', '#d63638').text('❌ Error de red.');
         });
