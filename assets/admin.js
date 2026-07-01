@@ -430,6 +430,7 @@ jQuery(document).ready(function($) {
 
         let completed = 0;
         let errors = 0;
+        let retries = 0;
 
         function processNext() {
             if (completed + errors >= selectedIds.length) {
@@ -450,20 +451,38 @@ jQuery(document).ready(function($) {
             }, function(response) {
                 if (response.success) {
                     completed++;
+                    retries = 0;
                     if (post) {
                         post.detected_lang = targetLang;
                         post.title = response.data.title;
                         $('#lang-cell-' + post.id).html('<strong>' + targetLang + '</strong>');
                     }
+                    let delay = (utpData.apiType === 'gemini') ? 13000 : 5200;
+                    btn.text('Traduciendo... (' + completed + '/' + selectedIds.length + ') - Pausa de ' + (delay/1000) + 's...');
+                    setTimeout(processNext, delay);
+                } else {
+                    if (retries < 3) {
+                        retries++;
+                        btn.text(`API Ocupada. Reintentando (${retries}/3) en 15s...`);
+                        setTimeout(processNext, 15000);
+                    } else {
+                        errors++;
+                        retries = 0;
+                        let delay = (utpData.apiType === 'gemini') ? 13000 : 5200;
+                        setTimeout(processNext, delay);
+                    }
+                }
+            }).fail(function() {
+                if (retries < 3) {
+                    retries++;
+                    btn.text(`Error de red. Reintentando (${retries}/3) en 15s...`);
+                    setTimeout(processNext, 15000);
                 } else {
                     errors++;
+                    retries = 0;
+                    let delay = (utpData.apiType === 'gemini') ? 13000 : 5200;
+                    setTimeout(processNext, delay);
                 }
-
-                btn.text('Traduciendo... (' + completed + '/' + selectedIds.length + ') - Pausa Anti-Bloqueo...');
-                setTimeout(processNext, 4200); // 4.2 segundos de pausa (15 req/min)
-            }).fail(function() {
-                errors++;
-                setTimeout(processNext, 4200);
             });
         }
 
@@ -679,6 +698,7 @@ jQuery(document).ready(function($) {
 
         let completed = 0;
         let errors = 0;
+        let retries = 0;
 
         function processNextUrl() {
             if (completed + errors >= selectedIds.length) {
@@ -697,19 +717,38 @@ jQuery(document).ready(function($) {
             }, function(response) {
                 if (response.success) {
                     completed++;
+                    retries = 0;
                     $('#slug-cell-' + id).html(`<code>${response.data.slug}</code>`);
                     if (response.data.old_slugs) {
                         $('#old-slugs-cell-' + id).html(response.data.old_slugs);
                     }
+                    let delay = (utpData.apiType === 'gemini') ? 13000 : 5200;
+                    btn.text(`Traduciendo... (${completed + errors}/${selectedIds.length}) - Esperando ${delay/1000}s...`);
+                    setTimeout(processNextUrl, delay);
+                } else {
+                    if (retries < 3) {
+                        retries++;
+                        btn.text(`API Ocupada. Reintentando (${retries}/3) en 15s...`);
+                        setTimeout(processNextUrl, 15000);
+                    } else {
+                        errors++;
+                        retries = 0;
+                        console.error('Error traduciendo URL ' + id, response.data);
+                        let delay = (utpData.apiType === 'gemini') ? 13000 : 5200;
+                        setTimeout(processNextUrl, delay);
+                    }
+                }
+            }).fail(function() {
+                if (retries < 3) {
+                    retries++;
+                    btn.text(`Error de red. Reintentando (${retries}/3) en 15s...`);
+                    setTimeout(processNextUrl, 15000);
                 } else {
                     errors++;
-                    console.error('Error traduciendo URL ' + id, response.data);
+                    retries = 0;
+                    let delay = (utpData.apiType === 'gemini') ? 13000 : 5200;
+                    setTimeout(processNextUrl, delay);
                 }
-                btn.text(`Traduciendo... (${completed + errors}/${selectedIds.length}) - Esperando 4s...`);
-                setTimeout(processNextUrl, 4200);
-            }).fail(function() {
-                errors++;
-                setTimeout(processNextUrl, 4200);
             });
         }
 

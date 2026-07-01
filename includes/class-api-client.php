@@ -5,7 +5,7 @@ class UTP_API_Client {
 
     // Modelos centralizados para poder actualizarlos en un solo lugar.
     const OPENAI_MODEL = 'gpt-4o-mini';
-    const GEMINI_MODEL = 'gemini-2.5-flash';
+    const GEMINI_MODEL = 'gemini-2.0-flash';
     const HTTP_TIMEOUT = 45;
 
     public static function translate( $text, $target_lang = 'EN', $override_api_type = '', $override_api_key = '' ) {
@@ -47,13 +47,13 @@ class UTP_API_Client {
                 $translated = self::batch_google( array_values( $to_translate ), $target_lang, $api_key );
                 break;
             case 'gemini':
-                $translated = self::batch_sequential( array_values( $to_translate ), $target_lang, $api_key, 'gemini' );
+                $translated = self::batch_llm( array_values( $to_translate ), $target_lang, $api_key, 'gemini' );
                 break;
             case 'openrouter':
-                $translated = self::batch_sequential( array_values( $to_translate ), $target_lang, $api_key, 'openrouter' );
+                $translated = self::batch_llm( array_values( $to_translate ), $target_lang, $api_key, 'openrouter' );
                 break;
             default:
-                $translated = self::batch_sequential( array_values( $to_translate ), $target_lang, $api_key, 'openai' );
+                $translated = self::batch_llm( array_values( $to_translate ), $target_lang, $api_key, 'openai' );
         }
 
         if ( is_wp_error( $translated ) ) return $translated;
@@ -171,7 +171,89 @@ class UTP_API_Client {
             : 'UNKNOWN';
     }
 
-    // --- OPENAI / GEMINI (sin batch nativo: secuencial) ---
+    // --- OPENAI / GEMINI ---
+
+    private static function batch_llm( $texts, $target_lang, $api_key, $provider ) {
+        if ( count( $texts ) === 1 ) {
+            return self::batch_sequential( $texts, $target_lang, $api_key, $provider );
+        }
+
+        $json_texts = wp_json_encode( $texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+        $prompt = "You are a professional translator. Translate the following JSON array of strings to {$target_lang}. Return ONLY a valid JSON array of strings with the exact same length and order as the input. Do NOT wrap the response in markdown blocks. Do not add any text before or after the JSON. Keep all HTML tags intact.\nInput:\n" . $json_texts;
+
+        $response_text = '';
+
+        if ( 'gemini' === $provider ) {
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . self::GEMINI_MODEL . ':generateContent?key=' . rawurlencode( $api_key );
+            $response = wp_remote_post( $url, array(
+                'timeout' => self::HTTP_TIMEOUT,
+                'headers' => array( 'Content-Type' => 'application/json' ),
+                'body'    => wp_json_encode( array(
+                    'contents'         => array( array( 'parts' => array( array( 'text' => $prompt ) ) ) ),
+                    'generationConfig' => array( 'temperature' => 0.1, 'responseMimeType' => 'application/json' ),
+                ) ),
+            ) );
+            if ( ! is_wp_error( $response ) ) {
+                $data = json_decode( wp_remote_retrieve_body( $response ), true );
+                if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
+                    $response_text = $data['candidates'][0]['content']['parts'][0]['text'];
+                }
+            }
+        } else if ( 'openrouter' === $provider ) {
+            $url = 'https://openrouter.ai/api/v1/chat/completions';
+            $model = get_option( 'utp_openrouter_model', 'google/gemini-2.0-flash-lite-preview-02-05:free' );
+            $response = wp_remote_post( $url, array(
+                'headers' => array( 'Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $api_key, 'HTTP-Referer' => site_url(), 'X-Title' => 'Universal Translator Pro' ),
+                'body'    => wp_json_encode( array(
+                    'model'       => $model,
+                    'messages'    => array( array( 'role' => 'user', 'content' => $prompt ) ),
+                    'temperature' => 0.1,
+                ) ),
+                'timeout' => self::HTTP_TIMEOUT,
+            ) );
+            if ( ! is_wp_error( $response ) ) {
+                $data = json_decode( wp_remote_retrieve_body( $response ), true );
+                if ( isset( $data['choices'][0]['message']['content'] ) ) {
+                    $response_text = $data['choices'][0]['message']['content'];
+                }
+            }
+        } else {
+            $response = wp_remote_post( 'https://api.openai.com/v1/chat/completions', array(
+                'timeout' => self::HTTP_TIMEOUT,
+                'headers' => array( 'Authorization' => 'Bearer ' . $api_key, 'Content-Type' => 'application/json' ),
+                'body'    => wp_json_encode( array(
+                    'model'       => self::OPENAI_MODEL,
+                    'messages'    => array( array( 'role' => 'user', 'content' => $prompt ) ),
+                    'temperature' => 0.1,
+                ) ),
+            ) );
+            if ( ! is_wp_error( $response ) ) {
+                $data = json_decode( wp_remote_retrieve_body( $response ), true );
+                if ( isset( $data['choices'][0]['message']['content'] ) ) {
+                    $response_text = $data['choices'][0]['message']['content'];
+                }
+            }
+        }
+
+        if ( ! empty( $response_text ) ) {
+            $response_text = trim( $response_text );
+            if ( strpos( $response_text, '```json' ) === 0 ) {
+                $response_text = preg_replace( '/^```json\s*|\s*```$/', '', $response_text );
+            } else if ( strpos( $response_text, '```' ) === 0 ) {
+                $response_text = preg_replace( '/^```\s*|\s*```$/', '', $response_text );
+            }
+
+            $decoded = json_decode( trim( $response_text ), true );
+            if ( is_array( $decoded ) && count( $decoded ) === count( $texts ) ) {
+                return $decoded;
+            }
+            
+            // Si el JSON devuelto no coincide en longitud o no es válido, lanzar error en vez de hacer fallback secuencial (que causa límite de 20 RPM).
+            return new WP_Error( 'api_error', 'Error empaquetando JSON. Longitud esperada: ' . count($texts) . '. Respuesta: ' . wp_strip_all_tags($response_text) );
+        }
+
+        return new WP_Error( 'api_error', 'Respuesta vacía de la API.' );
+    }
 
     private static function batch_sequential( $texts, $target_lang, $api_key, $provider ) {
         $out = array();
